@@ -13,6 +13,7 @@ class PomodoroTimer: ObservableObject {
     private var timer: Timer?
     private var startTime: Date?
     private let notificationManager = NotificationManager.shared
+    private let persistenceManager = PersistenceManager.shared
 
     // MARK: - Computed Properties
     var progress: Double {
@@ -33,7 +34,36 @@ class PomodoroTimer: ObservableObject {
 
     // MARK: - Initialization
     init() {
-        resetTimer()
+        if let savedState = persistenceManager.loadTimerState() {
+            let sessionType = savedState.sessionType
+            let timeRemaining = savedState.timeRemaining
+            let sessionsCompleted = savedState.sessionsCompleted
+            let wasRunning = savedState.wasRunning
+            let timeSinceLastSave = savedState.timeSinceLastSave
+
+            // Calculate actual remaining time if timer was running
+            var actualTimeRemaining = timeRemaining
+            if wasRunning {
+                actualTimeRemaining = timeRemaining - timeSinceLastSave
+            }
+
+            // Check if session completed while app was closed
+            if actualTimeRemaining <= 0 {
+                // Session finished - start fresh
+                resetTimer()
+                return
+            }
+
+            // Restore all saved values
+            currentSessionType = sessionType
+            self.timeRemaining = actualTimeRemaining
+            self.sessionsCompleted = sessionsCompleted
+            currentState = .idle    // Always start in idle state
+            isRunning = false       // Never auto-resume running timer
+        } else {
+            // No saved data - start fresh
+            resetTimer()
+        }
     }
 
     // MARK: - Public Methods
@@ -66,6 +96,9 @@ class PomodoroTimer: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.updateTimer()
         }
+
+        // Save state when timer starts
+        saveCurrentState()
     }
 
     func pauseTimer() {
@@ -86,6 +119,9 @@ class PomodoroTimer: ObservableObject {
         notificationManager.triggerHapticFeedback(for: .sessionPause)
 
         // Note: We keep timeRemaining as-is so we can resume from here
+
+        // Save state when paused
+        saveCurrentState()
     }
 
     func resetTimer() {
@@ -97,6 +133,9 @@ class PomodoroTimer: ObservableObject {
 
         // Cancel any scheduled notifications
         notificationManager.cancelAllNotifications()
+
+        // Clear saved state since we're resetting to defaults
+        persistenceManager.clearSavedState()
     }
 
     func skipToNextSession() {
@@ -116,6 +155,15 @@ class PomodoroTimer: ObservableObject {
     }
 
     // MARK: - Private Methods
+    private func saveCurrentState() {
+        persistenceManager.saveTimerState(
+            sessionType: currentSessionType,
+            timeRemaining: timeRemaining,
+            sessionsCompleted: sessionsCompleted,
+            isRunning: isRunning
+        )
+    }
+
     private func transitionToNextSession() {
         // Determine what the next session should be
         if currentSessionType == .work {
@@ -129,6 +177,9 @@ class PomodoroTimer: ObservableObject {
         // Reset timer for new session
         timeRemaining = currentSessionType.duration
         currentState = .idle
+
+        // Save state after session transition
+        saveCurrentState()
     }
 
     private func updateTimer() {
