@@ -27,6 +27,8 @@ struct ContentView: View {
             Text(pomodoroTimer.currentSessionType.displayName)
                 .font(.caption)
                 .foregroundStyle(progressColor)
+                .animation(.easeInOut(duration: 0.5), value: progressColor)
+                .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.currentSessionType)
 
             // Main Timer Display with Progress Ring
             ZStack {
@@ -42,6 +44,8 @@ struct ContentView: View {
                     .stroke(style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
                     .foregroundStyle(progressColor)
                     .rotationEffect(Angle(degrees: 270))
+                    .animation(.easeInOut(duration: 1.0), value: pomodoroTimer.progress)
+                    .animation(.easeInOut(duration: 0.5), value: progressColor)
 
                 // Timer text in center
                 VStack(spacing: 2) {
@@ -58,24 +62,30 @@ struct ContentView: View {
             // Controls
             HStack(spacing: 10) {
                 Button(pomodoroTimer.isRunning ? "Pause" : "Start") {
-                    if pomodoroTimer.isRunning {
-                        pomodoroTimer.pauseTimer()
-                    } else {
-                        pomodoroTimer.startTimer()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if pomodoroTimer.isRunning {
+                            pomodoroTimer.pauseTimer()
+                        } else {
+                            pomodoroTimer.startTimer()
+                        }
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.isRunning)
 
                 Button(pomodoroTimer.isRunning ? "Reset" : "Skip") {
-                    if pomodoroTimer.isRunning {
-                        pomodoroTimer.resetTimer()
-                    } else {
-                        pomodoroTimer.skipToNextSession()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if pomodoroTimer.isRunning {
+                            pomodoroTimer.resetTimer()
+                        } else {
+                            pomodoroTimer.skipToNextSession()
+                        }
                     }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.isRunning)
             }
 
             // Session Counter
