@@ -15,6 +15,10 @@ struct PomodoroWatchv2_Watch_AppApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(pomodoroTimer)
+                .task {
+                    // Request notification permission when app launches
+                    await NotificationManager.shared.requestPermission()
+                }
         }
     }
 }

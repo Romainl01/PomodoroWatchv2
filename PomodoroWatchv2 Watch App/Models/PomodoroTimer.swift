@@ -12,6 +12,7 @@ class PomodoroTimer: ObservableObject {
     // MARK: - Private Properties
     private var timer: Timer?
     private var startTime: Date?
+    private let notificationManager = NotificationManager.shared
 
     // MARK: - Computed Properties
     var progress: Double {
@@ -45,14 +46,21 @@ class PomodoroTimer: ObservableObject {
         isRunning = true
         startTime = Date()
 
-
-
-        // TODO(human): Implement state transition logic
+        // Set current state based on session type
         if currentSessionType == .work {
             currentState = .working
         } else {
             currentState = .onBreak
         }
+
+        // Schedule notification for when session completes
+        notificationManager.scheduleSessionCompletionNotification(
+            for: currentSessionType,
+            in: timeRemaining
+        )
+
+        // Add haptic feedback for session start
+        notificationManager.triggerHapticFeedback(for: .sessionStart)
 
         // Start the countdown timer
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -71,16 +79,24 @@ class PomodoroTimer: ObservableObject {
         isRunning = false
         currentState = .paused
 
+        // Cancel scheduled notification since we're pausing
+        notificationManager.cancelAllNotifications()
+
+        // Add haptic feedback for pause
+        notificationManager.triggerHapticFeedback(for: .sessionPause)
+
         // Note: We keep timeRemaining as-is so we can resume from here
     }
 
-    // TODO(human): Implement reset timer logic
     func resetTimer() {
         currentState = .idle
         currentSessionType = .work
         timeRemaining = currentSessionType.duration
         isRunning = false
         stopInternalTimer()
+
+        // Cancel any scheduled notifications
+        notificationManager.cancelAllNotifications()
     }
 
     func skipToNextSession() {
@@ -129,6 +145,9 @@ class PomodoroTimer: ObservableObject {
             if currentSessionType == .work {
                 sessionsCompleted += 1
             }
+
+            // Add haptic feedback for session completion
+            notificationManager.triggerHapticFeedback(for: .sessionComplete)
 
             // Always transition to next session (work→break or break→work)
             transitionToNextSession()
