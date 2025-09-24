@@ -169,8 +169,11 @@ class PomodoroTimer: ObservableObject {
         // Clear persisted state
         persistenceManager.clearSavedState()
 
-        // Provide haptic feedback for hard reset
+        // Provide distinct haptic feedback for hard reset (double buzz)
         notificationManager.triggerHapticFeedback(for: .sessionComplete)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.notificationManager.triggerHapticFeedback(for: .sessionComplete)
+        }
     }
 
     // MARK: - Private Methods

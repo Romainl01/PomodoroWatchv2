@@ -11,6 +11,7 @@ struct ContentView: View {
     @EnvironmentObject var pomodoroTimer: PomodoroTimer
     @State private var longPressProgress: Double = 0.0
     @State private var isLongPressing = false
+    @State private var touchStartTime: Date?
 
     private var progressColor: Color {
         switch pomodoroTimer.currentSessionType {
@@ -89,46 +90,52 @@ struct ContentView: View {
                     }
 
                     Button(pomodoroTimer.isRunning ? "Reset" : "Skip") {
-                        // Short tap action
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            if pomodoroTimer.isRunning {
-                                pomodoroTimer.resetTimer()
-                            } else {
-                                pomodoroTimer.skipToNextSession()
-                            }
-                        }
+                        // Button action - will be triggered by our custom gesture
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.isRunning)
                     .scaleEffect(isLongPressing ? 0.95 : 1.0)
                     .animation(.easeInOut(duration: 0.1), value: isLongPressing)
-                    .onLongPressGesture(
-                        minimumDuration: 3.0,
-                        maximumDistance: 50,
-                        perform: {
-                            // Long press completed - hard reset
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                pomodoroTimer.hardReset()
-                                longPressProgress = 0.0
-                                isLongPressing = false
-                            }
-                        },
-                        onPressingChanged: { pressing in
-                            if pressing {
-                                // Started long press
-                                isLongPressing = true
-                                withAnimation(.linear(duration: 3.0)) {
-                                    longPressProgress = 1.0
+                    .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.isRunning)
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in
+                                if !isLongPressing {
+                                    isLongPressing = true
+                                    touchStartTime = Date()
+                                    withAnimation(.linear(duration: 3.0)) {
+                                        longPressProgress = 1.0
+                                    }
                                 }
-                            } else {
-                                // Released before completion
+                            }
+                            .onEnded { _ in
+                                let touchDuration = touchStartTime?.timeIntervalSinceNow.magnitude ?? 0
+
+                                // Reset visual state
                                 withAnimation(.easeOut(duration: 0.2)) {
                                     longPressProgress = 0.0
                                     isLongPressing = false
                                 }
+
+                                // Determine action based on actual time held
+                                if touchDuration >= 3.0 {
+                                    // Long press completed - hard reset
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        pomodoroTimer.hardReset()
+                                    }
+                                } else {
+                                    // Short tap - normal reset/skip
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        if pomodoroTimer.isRunning {
+                                            pomodoroTimer.resetTimer()
+                                        } else {
+                                            pomodoroTimer.skipToNextSession()
+                                        }
+                                    }
+                                }
+
+                                touchStartTime = nil
                             }
-                        }
                     )
                 }
             }
