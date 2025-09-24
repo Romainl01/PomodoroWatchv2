@@ -32,11 +32,14 @@ enum SessionType: String, CaseIterable {
     var duration: TimeInterval {
         switch self {
         case .work:
-            return 25 * 60 // 25 minutes
+             return 25 * 60 // 25 minutes
+            // return 30 // For dev mode 
         case .shortBreak:
-            return 5 * 60  // 5 minutes
+             return 5 * 60  // 5 minutes
+            // return 5 // For dev mode
         case .longBreak:
-            return 15 * 60 // 15 minutes
+             return 15 * 60 // 15 minutes
+            // return 15 // For dev mode
         }
     }
 

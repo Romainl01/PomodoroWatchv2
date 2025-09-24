@@ -154,6 +154,25 @@ class PomodoroTimer: ObservableObject {
         transitionToNextSession()
     }
 
+    func hardReset() {
+        // Stop timer and cancel notifications
+        stopInternalTimer()
+        isRunning = false
+        notificationManager.cancelAllNotifications()
+
+        // Reset all state to initial values
+        currentState = .idle
+        currentSessionType = .work
+        timeRemaining = SessionType.work.duration
+        sessionsCompleted = 0
+
+        // Clear persisted state
+        persistenceManager.clearSavedState()
+
+        // Provide haptic feedback for hard reset
+        notificationManager.triggerHapticFeedback(for: .sessionComplete)
+    }
+
     // MARK: - Private Methods
     private func saveCurrentState() {
         persistenceManager.saveTimerState(

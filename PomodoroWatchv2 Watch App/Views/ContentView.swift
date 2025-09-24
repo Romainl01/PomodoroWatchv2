@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var pomodoroTimer: PomodoroTimer
+    @State private var longPressProgress: Double = 0.0
+    @State private var isLongPressing = false
 
     private var progressColor: Color {
         switch pomodoroTimer.currentSessionType {
@@ -23,12 +25,6 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            // Session Type Display
-            Text(pomodoroTimer.currentSessionType.displayName)
-                .font(.caption)
-                .foregroundStyle(progressColor)
-                .animation(.easeInOut(duration: 0.5), value: progressColor)
-                .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.currentSessionType)
 
             // Main Timer Display with Progress Ring
             ZStack {
@@ -59,6 +55,13 @@ struct ContentView: View {
             }
             .frame(width: 100, height: 100)
 
+             // Session Type Display
+            Text(pomodoroTimer.currentSessionType.displayName)
+                .font(.caption)
+                .foregroundStyle(progressColor)
+                .animation(.easeInOut(duration: 0.5), value: progressColor)
+                .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.currentSessionType)
+
             // Controls
             HStack(spacing: 10) {
                 Button(pomodoroTimer.isRunning ? "Pause" : "Start") {
@@ -74,18 +77,60 @@ struct ContentView: View {
                 .controlSize(.small)
                 .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.isRunning)
 
-                Button(pomodoroTimer.isRunning ? "Reset" : "Skip") {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        if pomodoroTimer.isRunning {
-                            pomodoroTimer.resetTimer()
-                        } else {
-                            pomodoroTimer.skipToNextSession()
+                // Reset/Skip Button with Long Press
+                ZStack {
+                    // Background progress indicator for long press
+                    if isLongPressing {
+                        Circle()
+                            .trim(from: 0.0, to: CGFloat(longPressProgress))
+                            .stroke(.red, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(.linear(duration: 0.1), value: longPressProgress)
+                    }
+
+                    Button(pomodoroTimer.isRunning ? "Reset" : "Skip") {
+                        // Short tap action
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if pomodoroTimer.isRunning {
+                                pomodoroTimer.resetTimer()
+                            } else {
+                                pomodoroTimer.skipToNextSession()
+                            }
                         }
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.isRunning)
+                    .scaleEffect(isLongPressing ? 0.95 : 1.0)
+                    .animation(.easeInOut(duration: 0.1), value: isLongPressing)
+                    .onLongPressGesture(
+                        minimumDuration: 3.0,
+                        maximumDistance: 50,
+                        perform: {
+                            // Long press completed - hard reset
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                pomodoroTimer.hardReset()
+                                longPressProgress = 0.0
+                                isLongPressing = false
+                            }
+                        },
+                        onPressingChanged: { pressing in
+                            if pressing {
+                                // Started long press
+                                isLongPressing = true
+                                withAnimation(.linear(duration: 3.0)) {
+                                    longPressProgress = 1.0
+                                }
+                            } else {
+                                // Released before completion
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    longPressProgress = 0.0
+                                    isLongPressing = false
+                                }
+                            }
+                        }
+                    )
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .animation(.easeInOut(duration: 0.3), value: pomodoroTimer.isRunning)
             }
 
             // Session Counter
